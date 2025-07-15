@@ -3,62 +3,97 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Turbine Puzzle</title>
+<title>Turbine Crasher</title>
 <style>
-  body {
-    margin: 0; background: #000; color: #0f0;
-    font-family: monospace; user-select: none;
-    display: flex; flex-direction: column; align-items: center;
+  /* Full viewport, flex center */
+  html, body {
+    margin: 0; height: 100%;
+    background: linear-gradient(135deg, #001100, #004400, #006622);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    color: #a4fcae;
+    user-select: none;
   }
   h1 {
     margin: 20px 0 5px;
-    font-weight: normal;
+    font-weight: 700;
+    text-shadow: 0 0 8px #76ff72;
+    font-size: 3rem;
+    letter-spacing: 3px;
   }
   h2 {
     margin: 5px 0 15px;
-    font-weight: normal;
-    font-size: 14px;
+    font-weight: 500;
+    font-size: 1.1rem;
+    color: #b0ffb0cc;
+    text-shadow: 0 0 5px #2a662a;
   }
   canvas {
-    border: 1px solid #0f0;
-    background: #111;
-    box-shadow: 0 0 10px #0f0;
+    flex-grow: 1;
+    width: 100vw;
+    max-width: 1200px;
+    height: 60vh;
+    border-radius: 12px;
+    border: 2px solid #68d468;
+    background: linear-gradient(180deg, #112211, #003300);
+    box-shadow:
+      0 0 12px #43a743,
+      inset 0 0 15px #0f0f0f,
+      inset 0 -5px 20px #0a0a0a;
+    display: block;
+    margin-bottom: 20px;
   }
   #winScreen {
     position: fixed;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    background: #001100dd;
-    padding: 20px 30px;
-    border: 2px solid #0f0;
+    background: rgba(10, 40, 10, 0.95);
+    padding: 30px 50px;
+    border-radius: 15px;
+    border: 3px solid #6ff06f;
+    box-shadow: 0 0 30px #6ff06fcc;
     display: none;
     text-align: center;
-    color: #0f0;
+    color: #b3ffb3;
+    font-weight: 600;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    z-index: 10;
   }
   button {
-    background: #000;
-    border: 1px solid #0f0;
-    color: #0f0;
-    padding: 8px 16px;
-    font-size: 14px;
+    background: transparent;
+    border: 2px solid #a4fcae;
+    color: #a4fcae;
+    padding: 12px 26px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 10px;
     cursor: pointer;
-    margin: 5px;
+    margin: 0 12px 20px 12px;
+    transition: all 0.25s ease;
+    box-shadow: 0 0 6px #49a549;
   }
   button:hover {
-    background: #0f0;
-    color: #000;
+    background: #a4fcae;
+    color: #003300;
+    box-shadow: 0 0 20px #27a527;
+    transform: scale(1.1);
   }
   #bestScores {
-    margin-top: 10px;
-    font-size: 14px;
+    margin-top: 5px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-shadow: 0 0 4px #2a662a;
   }
 </style>
 </head>
 <body>
 
-<h1>Turbine Puzzle</h1>
-<h2>Activate all bars to overload the core</h2>
-<canvas id="gameCanvas" width="800" height="400"></canvas>
+<h1>Turbine Crasher</h1>
+<h2>Activate all bars to overload the core.</h2>
+<canvas id="gameCanvas"></canvas>
 
 <div>
   <button onclick="startGame('easy')">Start Easy</button>
@@ -77,16 +112,26 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+function resizeCanvas() {
+  canvas.width = window.innerWidth * 0.9;
+  canvas.height = window.innerHeight * 0.6;
+}
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  if (gameRunning) draw(); // redraw on resize
+});
+resizeCanvas();
+
 let numTurbines;
 let bars = [];
 let turbines = [];
 let startTime, clickCount;
 let gameRunning = false;
 
-const BAR_WIDTH = 30;
-const BAR_MAX_HEIGHT = 180;
-const BAR_BASE_Y = 300;
-const PADDING = 50;
+let BAR_WIDTH;
+let BAR_MAX_HEIGHT;
+let BAR_BASE_Y;
+let PADDING;
 
 function randPattern(n) {
   return Array.from({length: n}, () => Math.random() < 0.5);
@@ -98,13 +143,20 @@ function startGame(mode) {
   turbines = [];
 
   for (let i=0; i<numTurbines; i++) {
-    turbines.push({pattern: randPattern(numTurbines), spinAngle: Math.random()*Math.PI*2, spinSpeed: 0.05 + Math.random()*0.05, clickBounce: 0});
+    turbines.push({pattern: randPattern(numTurbines), spinAngle: Math.random()*Math.PI*2, spinSpeed: 0.07 + Math.random()*0.06, clickBounce: 0});
   }
 
   clickCount = 0;
   startTime = performance.now();
   gameRunning = true;
   document.getElementById('winScreen').style.display = 'none';
+
+  // Dynamically calculate sizes based on canvas
+  BAR_WIDTH = Math.min(50, (canvas.width - 2*50) / (numTurbines * 1.5));
+  BAR_MAX_HEIGHT = canvas.height * 0.45;
+  BAR_BASE_Y = canvas.height * 0.65;
+  PADDING = 50;
+
   draw();
   updateBestScoresDisplay();
 }
@@ -112,7 +164,7 @@ function startGame(mode) {
 function toggleTurbine(i) {
   if (!gameRunning) return;
   clickCount++;
-  turbines[i].clickBounce = 10;
+  turbines[i].clickBounce = 12;
   const pattern = turbines[i].pattern;
 
   for (let j=0; j<bars.length; j++) {
@@ -166,31 +218,34 @@ function updateBestScoresDisplay() {
 }
 
 function drawBars() {
-  // evenly space bars across canvas width minus padding
   const space = (canvas.width - 2*PADDING - numTurbines*BAR_WIDTH) / (numTurbines-1);
 
   bars.forEach((bar, i) => {
-    // animate height towards target height
     let targetHeight = bar.target ? BAR_MAX_HEIGHT : 10;
-    bar.currentHeight += (targetHeight - bar.currentHeight) * 0.2;
+    bar.currentHeight += (targetHeight - bar.currentHeight) * 0.25;
 
     const x = PADDING + i*(BAR_WIDTH + space);
     const y = BAR_BASE_Y - bar.currentHeight;
 
-    // glow effect when on
+    // glowing gradient fill for ON bars
     if (bar.target) {
-      ctx.shadowColor = '#0f0';
-      ctx.shadowBlur = 15;
-      ctx.fillStyle = '#0f0';
+      let grad = ctx.createLinearGradient(x, y, x, y + bar.currentHeight);
+      grad.addColorStop(0, '#8cff7f');
+      grad.addColorStop(1, '#0b5700');
+      ctx.fillStyle = grad;
+      ctx.shadowColor = '#7efc44';
+      ctx.shadowBlur = 25;
     } else {
+      ctx.fillStyle = '#033203';
       ctx.shadowBlur = 0;
-      ctx.fillStyle = '#022';
     }
+
     ctx.fillRect(x, y, BAR_WIDTH, bar.currentHeight);
 
+    // fancy border
     ctx.shadowBlur = 0;
-    // base bar outline
-    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = bar.target ? '#9cfc57' : '#175017';
     ctx.strokeRect(x, BAR_BASE_Y - BAR_MAX_HEIGHT, BAR_WIDTH, BAR_MAX_HEIGHT);
   });
 }
@@ -199,38 +254,43 @@ function drawTurbines() {
   const space = (canvas.width - 2*PADDING - numTurbines*BAR_WIDTH) / (numTurbines-1);
   turbines.forEach((turb, i) => {
     const x = PADDING + i*(BAR_WIDTH + space) + BAR_WIDTH/2;
-    const y = 360;
+    const y = BAR_BASE_Y + BAR_MAX_HEIGHT * 0.2;
 
     turb.spinAngle += turb.spinSpeed;
 
-    // bounce on click
     if (turb.clickBounce > 0) {
       turb.clickBounce--;
     }
-    const bounceRot = Math.sin((10 - turb.clickBounce) * 0.3) * 0.5;
+    const bounceRot = Math.sin((12 - turb.clickBounce) * 0.4) * 0.7;
 
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(turb.spinAngle + bounceRot);
 
-    // simple turbine shape - 4 blades
+    // turbine blades - smoother gradient fill
     for (let f=0; f<4; f++) {
-      ctx.fillStyle = f%2 === 0 ? '#0f0' : '#060';
+      let bladeGrad = ctx.createLinearGradient(0, -30, 0, 0);
+      bladeGrad.addColorStop(0, f%2 === 0 ? '#a0fda0' : '#3ca63c');
+      bladeGrad.addColorStop(1, '#044404');
+      ctx.fillStyle = bladeGrad;
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(10, -30);
-      ctx.lineTo(-10, -30);
+      ctx.lineTo(12, -35);
+      ctx.lineTo(-12, -35);
       ctx.closePath();
       ctx.fill();
       ctx.rotate(Math.PI/2);
     }
     ctx.restore();
 
-    // label below turbine
-    ctx.fillStyle = '#0f0';
-    ctx.font = '14px monospace';
+    // label below turbine with soft glow
+    ctx.fillStyle = '#9afc73';
+    ctx.font = `bold ${Math.floor(BAR_WIDTH/3)}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(`Turbine ${i+1}`, x, y + 40);
+    ctx.shadowColor = '#76ff72';
+    ctx.shadowBlur = 8;
+    ctx.fillText(`Turbine ${i+1}`, x, y + 55);
+    ctx.shadowBlur = 0;
   });
 }
 
@@ -253,16 +313,16 @@ canvas.addEventListener('click', e => {
   const space = (canvas.width - 2*PADDING - numTurbines*BAR_WIDTH) / (numTurbines-1);
   for (let i=0; i<numTurbines; i++) {
     const x = PADDING + i*(BAR_WIDTH + space);
-    const y = 330; // turbine center y approx 360 - radius 30, so clickable rect around y=330
+    const y = BAR_BASE_Y + BAR_MAX_HEIGHT * 0.2 - 35; // turbine center y approx
 
-    if (mx > x && mx < x + BAR_WIDTH && my > y && my < y + 60) {
+    if (mx > x && mx < x + BAR_WIDTH && my > y - 30 && my < y + 30) {
       toggleTurbine(i);
       break;
     }
   }
 });
 
-// Start default game on load
+// Kick off easy mode on load
 startGame('easy');
 </script>
 
