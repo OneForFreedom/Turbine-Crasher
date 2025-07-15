@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Turbine Puzzle</title>
+<style>
+  body {
+    margin: 0; background: #000; color: #0f0;
+    font-family: monospace; user-select: none;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 {
+    margin: 20px 0 5px;
+    font-weight: normal;
+  }
+  h2 {
+    margin: 5px 0 15px;
+    font-weight: normal;
+    font-size: 14px;
+  }
+  canvas {
+    border: 1px solid #0f0;
+    background: #111;
+    box-shadow: 0 0 10px #0f0;
+  }
+  #winScreen {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #001100dd;
+    padding: 20px 30px;
+    border: 2px solid #0f0;
+    display: none;
+    text-align: center;
+    color: #0f0;
+  }
+  button {
+    background: #000;
+    border: 1px solid #0f0;
+    color: #0f0;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 5px;
+  }
+  button:hover {
+    background: #0f0;
+    color: #000;
+  }
+  #bestScores {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Turbine Puzzle</h1>
+<h2>Activate all bars to overload the core</h2>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+
+<div>
+  <button onclick="startGame('easy')">Start Easy</button>
+  <button onclick="startGame('hard')">Start Hard</button>
+</div>
+
+<div id="winScreen">
+  <h2>You Win!</h2>
+  <div id="stats"></div>
+  <button onclick="resetGame()">Reset</button>
+</div>
+
+<div id="bestScores">No records yet.</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let numTurbines;
+let bars = [];
+let turbines = [];
+let startTime, clickCount;
+let gameRunning = false;
+
+const BAR_WIDTH = 30;
+const BAR_MAX_HEIGHT = 180;
+const BAR_BASE_Y = 300;
+const PADDING = 50;
+
+function randPattern(n) {
+  return Array.from({length: n}, () => Math.random() < 0.5);
+}
+
+function startGame(mode) {
+  numTurbines = mode === 'hard' ? 10 : 6;
+  bars = Array(numTurbines).fill(false).map(() => ({target: false, currentHeight: 10}));
+  turbines = [];
+
+  for (let i=0; i<numTurbines; i++) {
+    turbines.push({pattern: randPattern(numTurbines), spinAngle: Math.random()*Math.PI*2, spinSpeed: 0.05 + Math.random()*0.05, clickBounce: 0});
+  }
+
+  clickCount = 0;
+  startTime = performance.now();
+  gameRunning = true;
+  document.getElementById('winScreen').style.display = 'none';
+  draw();
+  updateBestScoresDisplay();
+}
+
+function toggleTurbine(i) {
+  if (!gameRunning) return;
+  clickCount++;
+  turbines[i].clickBounce = 10;
+  const pattern = turbines[i].pattern;
+
+  for (let j=0; j<bars.length; j++) {
+    if (pattern[j]) bars[j].target = !bars[j].target;
+  }
+
+  if (bars.every(b => b.target)) {
+    gameRunning = false;
+    showWinScreen();
+  }
+}
+
+function showWinScreen() {
+  const elapsed = (performance.now() - startTime)/1000;
+  const stats = document.getElementById('stats');
+  stats.innerHTML = `
+    <p>Time: <strong>${elapsed.toFixed(2)}s</strong></p>
+    <p>Clicks: <strong>${clickCount}</strong></p>
+  `;
+  saveBestScores(elapsed, clickCount);
+  document.getElementById('winScreen').style.display = 'block';
+}
+
+function resetGame() {
+  startGame(numTurbines === 10 ? 'hard' : 'easy');
+}
+
+function saveBestScores(time, clicks) {
+  const best = JSON.parse(localStorage.getItem('ls-turbine-best') || '{}');
+  let updated = false;
+  if (!best.time || time < best.time) {
+    best.time = time;
+    updated = true;
+  }
+  if (!best.clicks || clicks < best.clicks) {
+    best.clicks = clicks;
+    updated = true;
+  }
+  if (updated) localStorage.setItem('ls-turbine-best', JSON.stringify(best));
+  updateBestScoresDisplay();
+}
+
+function updateBestScoresDisplay() {
+  const bestScoresDiv = document.getElementById('bestScores');
+  const best = JSON.parse(localStorage.getItem('ls-turbine-best') || '{}');
+  if (best.time && best.clicks) {
+    bestScoresDiv.textContent = `Best Time: ${best.time.toFixed(2)}s | Least Clicks: ${best.clicks}`;
+  } else {
+    bestScoresDiv.textContent = 'No records yet.';
+  }
+}
+
+function drawBars() {
+  // evenly space bars across canvas width minus padding
+  const space = (canvas.width - 2*PADDING - numTurbines*BAR_WIDTH) / (numTurbines-1);
+
+  bars.forEach((bar, i) => {
+    // animate height towards target height
+    let targetHeight = bar.target ? BAR_MAX_HEIGHT : 10;
+    bar.currentHeight += (targetHeight - bar.currentHeight) * 0.2;
+
+    const x = PADDING + i*(BAR_WIDTH + space);
+    const y = BAR_BASE_Y - bar.currentHeight;
+
+    // glow effect when on
+    if (bar.target) {
+      ctx.shadowColor = '#0f0';
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = '#0f0';
+    } else {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#022';
+    }
+    ctx.fillRect(x, y, BAR_WIDTH, bar.currentHeight);
+
+    ctx.shadowBlur = 0;
+    // base bar outline
+    ctx.strokeStyle = '#0f0';
+    ctx.strokeRect(x, BAR_BASE_Y - BAR_MAX_HEIGHT, BAR_WIDTH, BAR_MAX_HEIGHT);
+  });
+}
+
+function drawTurbines() {
+  const space = (canvas.width - 2*PADDING - numTurbines*BAR_WIDTH) / (numTurbines-1);
+  turbines.forEach((turb, i) => {
+    const x = PADDING + i*(BAR_WIDTH + space) + BAR_WIDTH/2;
+    const y = 360;
+
+    turb.spinAngle += turb.spinSpeed;
+
+    // bounce on click
+    if (turb.clickBounce > 0) {
+      turb.clickBounce--;
+    }
+    const bounceRot = Math.sin((10 - turb.clickBounce) * 0.3) * 0.5;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(turb.spinAngle + bounceRot);
+
+    // simple turbine shape - 4 blades
+    for (let f=0; f<4; f++) {
+      ctx.fillStyle = f%2 === 0 ? '#0f0' : '#060';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(10, -30);
+      ctx.lineTo(-10, -30);
+      ctx.closePath();
+      ctx.fill();
+      ctx.rotate(Math.PI/2);
+    }
+    ctx.restore();
+
+    // label below turbine
+    ctx.fillStyle = '#0f0';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Turbine ${i+1}`, x, y + 40);
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBars();
+  drawTurbines();
+
+  if (gameRunning) {
+    requestAnimationFrame(draw);
+  }
+}
+
+canvas.addEventListener('click', e => {
+  if (!gameRunning) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const space = (canvas.width - 2*PADDING - numTurbines*BAR_WIDTH) / (numTurbines-1);
+  for (let i=0; i<numTurbines; i++) {
+    const x = PADDING + i*(BAR_WIDTH + space);
+    const y = 330; // turbine center y approx 360 - radius 30, so clickable rect around y=330
+
+    if (mx > x && mx < x + BAR_WIDTH && my > y && my < y + 60) {
+      toggleTurbine(i);
+      break;
+    }
+  }
+});
+
+// Start default game on load
+startGame('easy');
+</script>
+
+</body>
+</html>
