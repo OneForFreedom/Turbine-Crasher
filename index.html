@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Turbine Puzzle</title>
+<title>Lightsaber Turbine Puzzle</title>
 <style>
   body {
     margin: 0; background: #000; color: #0f0;
@@ -56,8 +56,8 @@
 </head>
 <body>
 
-<h1>Turbine Puzzle</h1>
-<h2>Activate all bars to overload the core</h2>
+<h1>Lightsaber Turbine Puzzle</h1>
+<h2>Activate all bars to stabilize the core</h2>
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <div>
@@ -128,10 +128,10 @@ function toggleTurbine(i) {
 function showWinScreen() {
   const elapsed = (performance.now() - startTime)/1000;
   const stats = document.getElementById('stats');
-  stats.innerHTML = 
+  stats.innerHTML = `
     <p>Time: <strong>${elapsed.toFixed(2)}s</strong></p>
     <p>Clicks: <strong>${clickCount}</strong></p>
-  ;
+  `;
   saveBestScores(elapsed, clickCount);
   document.getElementById('winScreen').style.display = 'block';
 }
@@ -159,7 +159,7 @@ function updateBestScoresDisplay() {
   const bestScoresDiv = document.getElementById('bestScores');
   const best = JSON.parse(localStorage.getItem('ls-turbine-best') || '{}');
   if (best.time && best.clicks) {
-    bestScoresDiv.textContent = Best Time: ${best.time.toFixed(2)}s | Least Clicks: ${best.clicks};
+    bestScoresDiv.textContent = `Best Time: ${best.time.toFixed(2)}s | Least Clicks: ${best.clicks}`;
   } else {
     bestScoresDiv.textContent = 'No records yet.';
   }
@@ -230,7 +230,7 @@ function drawTurbines() {
     ctx.fillStyle = '#0f0';
     ctx.font = '14px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(Turbine ${i+1}, x, y + 40);
+    ctx.fillText(`Turbine ${i+1}`, x, y + 40);
   });
 }
 
